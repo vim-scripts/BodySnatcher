@@ -1,0 +1,14 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=1115
+
+if ! has('perl')
+    move along, nothing to see here ;-)
+endif
+
+This plugin does a search of lines of a .html document and parses the statement of the <body> attributes. In modern times we prefer to use CSS to control presentational aspects of Web pages like text color, background, and link color.  When designing a site from scratch we'd plan that ahead of time. When updating a handful of pages that were not originally authored with CSS in mind, a script like this saves time by pulling out the expected HTML attributes and converting them to CSS declarations.
+
+Update 13:07(TZ=EDT) - 28.Oct.2004 -
+   My thanks to the dozen or so people who have downloaded version 1.3, and please update to
+to version 1.4. Important bugs are fixed in this new release.
+
+For more info and an md5 sum to check against, see this tool's home page at
+http://intrepid.perlmonk.org/VIMtools/BSn/index.html
