@@ -1,8 +1,8 @@
 " First created: Oct 23 2004 (EDT)
-" Last modified: 21:33(TZ:EDT) 27-Oct-2004
+" Last modified: 12:23(TZ:EDT) 28-Oct-2004
 
-" **** $CVSHeader: perl-proj/other/vimplugins/bodysnatcher/BODY-snatcher.vim,v 1.3 2004/10/28 01:39:15 somian Exp $
-" **** $Revision: 1.3 $
+" **** $CVSHeader: perl-proj/other/vimplugins/bodysnatcher/BODY-snatcher.vim,v 1.4 2004/10/28 16:53:24 somian Exp $
+" **** $Revision: 1.4 $
 
 " Author: Soren Andersen <intrepid *AT* perlmonk -DOT- org>
 " Copyright: (C)2004 Soren Andersen (USA)
@@ -23,7 +23,13 @@ perl <<EOthePERLCODE
        my %serenity = ();
        my ($attrrhs,$attrlhs,$tpos,$slim);
        chomp(my $wstr = shift);
-       $wstr =~s#  \<\w+\s* ([^>]+)>  #$1#x; # remove the name ("body") and angle braces.
+       $wstr =~s#  \<\w+\s* ([^>]*)>  #$1#x; # remove the name ("body") and angle braces.
+
+       if ( 0 > index $wstr,q{=} or $wstr =~ /style=/i ) {
+	   VIM::Msg("The document BODY has no HTML attributes, quitting", q|ErrorMsg|);
+	    return 0;
+       }
+
        my $npos = index($wstr,q{="}) || index($wstr,q{='}) || 0x0; #"
        $slim = 24;  # stop runaway loop
        unless ($npos < $[)  {
@@ -67,7 +73,8 @@ perl <<EOthePERLCODE
   }
 
 
-  sub hIppO        {
+  sub pullOut        {
+       my ($ila,$hsd);
        my %nonStyle = ( "BACKGROUND" => "background-image"
 	               ,"BGCOLOR"    => "background-color"
 		       ,"TEXT"       => "color"
@@ -75,7 +82,7 @@ perl <<EOthePERLCODE
 		       ,"ALINK"      => "a:active"
 		       ,"VLINK"      => "a:visited" );
        my $adata = splitUnQ(shift);
-       my ($ila,$hsd);
+       return () unless $adata;
 
        for (keys %$adata) {
 	   my $canonolli = $_;
@@ -127,26 +134,33 @@ perl <<EOthePERLCODE
        my $dlc =  $curbuf->Count;
        my $lncount_bodystart = 0;
        my $seekTheEnd = sub {
-	     my $nln = $lco;
+	     my $nln = 1 + shift(@_);
 	     my $lbuff = "";
+	     my $wfound;
 	     while ( my $nld = $curbuf->Get($nln) )
 	     {
 		 chomp $nld;
-		 $lbuff .= index($nld,q{>})? substr ($nld,0,index($nld,q{>}))
-		                           : $nld;
-		 if (index $nld,q{>})
-		    { $lncount_bodystart = $nln; last }
-	     }
-		                                          $lbuff }; # end of sub
+		 $nld =~ s#  \s*(\S*.*)\s*\z  #$1#x;
+		 unless (0 > ( $wfound = index $nld,q{>} ))  {
+		      $lbuff .= q{ }. substr ($nld,0,1 + $wfound);
+		      VInform("Setting line $nln (\"$lbuff\")") if $DeeBugg;
+		      $curbuf->Set($nln, substr ($nld,1 + $wfound));
+		      last
+		 } else {
+		      $lbuff .= q{ }. $nld;
+		      $curbuf->Set($nln , "");
+		      ++$nln;
+		 }
+	     }                                  $lbuff }; # end of subref
 
        while ($lco < $dlc)  {
 	    my $cul = $curbuf->Get($lco);
 	    $neck = $lco if $cul =~ m{ </(?i:head)> }x;
             if   (
-	$cul =~ m{ <(?i:body\s) [^>]+ }x    ) {
+	$cul =~ m{ \<(?i:body) \s* [^>]* }x    ) {
 		   my $psATR  =  $&;
-		   my $comPL  =  $' eq q{>}? q{>} : $seekTheEnd->();
-		   $lncount_bodystart ||= $lco;
+		   my $comPL  =  $' eq q{>}    ? q{>} : $seekTheEnd->($lco);
+		   $lncount_bodystart = $lco;
 		   $reass = $psATR . $comPL;
 		   last
 	    }
@@ -156,7 +170,10 @@ perl <<EOthePERLCODE
 		 q|ErrorMsg|)                unless $reass;
 
        $preserving = $reass if $preserving;
-       my @head_shoulders = hIppO($reass);
+       
+       my @head_shoulders = pullOut($reass);
+       return 254 unless @head_shoulders;
+
        if($preserving)  {
 	   $preserving =~ s#  \<(?i:body\s+)  #<body #x;
 	   $preserving =~ s#  \>\s*\z  ##x;
